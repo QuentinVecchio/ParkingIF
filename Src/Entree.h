@@ -1,34 +1,30 @@
 /*************************************************************************
-                           Mere  -  description
+                           Entree  -  description
                              -------------------
     début                : 18/03/16
-    copyright            : (C) Adrien Lepic, Marcin , Quentin Vecchio
+    copyright            : (C)  Quentin Vecchio
     e-mail               : vecchioquentin@hotmail.fr
 *************************************************************************/
 
-//---------- Interface de la tâche <Mere> (fichier Mere.h) ---------
-#if ! defined ( MERE_H )
-#define MERE_H
+//---------- Interface de la tâche <Entree> (fichier Entree.h) -------
+#if ! defined ( Entree_H )
+#define Entree_H
 #include <iostream>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <sys/ipc.h>
-#include <sys/sem.h>
-#include <sys/shm.h>
-#include <sys/msg.h>
-#include <signal.h>
-#include "GestionClavier.h"
-#include "Heure.h"
 #include "Outils.h"
 #include "Donnees.h"
+#include <sys/msg.h>
+#include <sys/sem.h>
+#include <signal.h>
+#include <iostream>
+#include <unistd.h>
 #include <cstdlib>
+#include <sys/shm.h>
+#include <sys/wait.h>
 
-using namespace std;
 //------------------------------------------------------------------------
-// Rôle de la tâche <Mere>
-//	
-//
+// Rôle de la tâche <Entree>
+//	La tâche entrée gère des voitures à sa barrière et les fait entrer selon des
+//	contraintes de disponibilité et de privilège
 //------------------------------------------------------------------------
 
 /////////////////////////////////////////////////////////////////  INCLUDE
@@ -40,35 +36,17 @@ using namespace std;
 
 //////////////////////////////////////////////////////////////////  PUBLIC
 //---------------------------------------------------- Fonctions publiques
-int main();
+void Entree(int numero, int idBal, int idSemaphoreSynchro, int idSemaphoreNbPlace, int idSemaphoreRequete , int idMPNbPlaces, int idMPRequete);
 // Mode d'emploi :
 //
 // Contrat :
 //
 
-static void SignalDestruction ( int noSignal ) ;
+void LanceRequete();
 // Mode d'emploi :
 //
 // Contrat :
 //
 
-void Initialisation();
-// Mode d'emploi :
-//
-// Contrat :
-//
-
-void Moteur();
-// Mode d'emploi :
-//
-// Contrat :
-//
-
-void Destruction();
-// Mode d'emploi :
-//
-// Contrat :
-//
-
-#endif // MERE_H
+#endif // Entree_H
 

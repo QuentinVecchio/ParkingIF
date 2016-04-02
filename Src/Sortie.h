@@ -1,54 +1,52 @@
 /*************************************************************************
-                           GestionClavier  -  description
+                           Sortie  -  description
                              -------------------
     début                : 18/03/16
-    copyright            : (C) Adrien Lepic, Marcin , Quentin Vecchio
+    copyright            : (C)  Quentin Vecchio
     e-mail               : vecchioquentin@hotmail.fr
 *************************************************************************/
 
-//---------- Interface de la tâche <GestionClavier> (fichier GestionClavier.h) -------
-#if ! defined ( GestionClavier_H )
-#define GestionClavier_H
-
-//------------------------------------------------------------------------
-// Rôle de la tâche <GestionClavier>
-//	La tâche Gestion Clavier va gérer le clavier et envoyer les commandes
-//	aux taches entrée et sortie
-//------------------------------------------------------------------------
-
-/////////////////////////////////////////////////////////////////  INCLUDE
-//--------------------------------------------------- Interfaces utilisées
-#include "Menu.h"
+//---------- Interface de la tâche <Sortie> (fichier Sortie.h) -------
+#if ! defined ( Sortie_H )
+#define Sortie_H
+#include <iostream>
+#include "Outils.h"
+#include "Donnees.h"
+#include <sys/msg.h>
+#include <sys/sem.h>
 #include <signal.h>
 #include <iostream>
 #include <unistd.h>
 #include <cstdlib>
+#include <sys/shm.h>
+#include <sys/wait.h>
 
-using namespace std;
+//------------------------------------------------------------------------
+// Rôle de la tâche <Sortie>
+//	La tâche sortie gère la sortie des voitures du parking
+//	La tâche gère également les requêtes des entrées
+//------------------------------------------------------------------------
+
+/////////////////////////////////////////////////////////////////  INCLUDE
+//--------------------------------------------------- Interfaces utilisées
+
 //------------------------------------------------------------- Constantes
 
 //------------------------------------------------------------------ Types
 
 //////////////////////////////////////////////////////////////////  PUBLIC
 //---------------------------------------------------- Fonctions publiques
-static void SignalDestruction ( int noSignal );
+void Sortie(int idBal, int* idSemaphoreSynchro, int idSemaphoreContenuParking, int idSemaphoreRequete , int idMPContenuParking, int idMPRequete);
 // Mode d'emploi :
 //
 // Contrat :
 //
 
-void GestionClavier();
+void GereRequete();
 // Mode d'emploi :
 //
 // Contrat :
 //
 
-void Commande(char code, unsigned int valeur);
-// Mode d'emploi :
-//
-// Contrat :
-
-//
-
-#endif // GestionClavier_H
+#endif // Sortie_H
 

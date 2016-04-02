@@ -6,15 +6,15 @@
 #*******************************************************************************#
 CC=g++
 EDL=g++
-EXECNAME=EXEC
+EXECNAME=Parking
 DEBUG=#-DMAP
-CPPFLAGS=-I -g -O2 -Wall -static
-EDLFLAGS=-g -O2 -Wall
+CPPFLAGS=-I -g -O2 -Wall -static -std=c++11
+EDLFLAGS=I -g -O2 -Wall -static -std=c++11
 RM=@rm
 ECHO=@echo
 RMFLAGS=-f
 OUTPUT=-o
-INT= GestionClavier.h Mere.h
+INT= GestionClavier.h Mere.h Entree.h Sortie.h
 CPP=$(INT:.h=.cpp)
 OBJ=$(INT:.h=.o)
 CLEAR=clear
@@ -28,7 +28,7 @@ $(EXECNAME) : $(OBJ)
 	$(ECHO) "Edition des liens de $(EXECNAME)"
 	$(EDL) $(EDLFLAGS) $(OBJ) $(LIBS) $(LIBPATH) $(OUTPUT) $(EXECNAME)
 
-Mere.o : GestionClavier.h
+Mere.o : GestionClavier.h Entree.h Sortie.h
 
 %.o : %.cpp
 	$(ECHO) "Compilation de $<"
