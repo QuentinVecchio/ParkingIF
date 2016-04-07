@@ -66,12 +66,14 @@ void Commande(char code, unsigned int valeur)
 		req.voiture.usager = PROF;
 		req.voiture.heureArrivee = time(NULL);
 		if(valeur == 1) {
-			req.typeBarriere = PROF_BLAISE_PASCAL;			
+			req.typeBarriere = PROF_BLAISE_PASCAL;
+			if(msgsnd(idBalEntrees[0],&req,sizeof(StructRequete), 0) < 0)
+				cout << "Error clavier" << endl;		
 		} else {
 			req.typeBarriere = ENTREE_GASTON_BERGER;
+			if(msgsnd(idBalEntrees[2],&req,sizeof(StructRequete), 0) < 0)
+				cout << "Error clavier" << endl;
 		}
-		if(msgsnd(idBalEntrees[valeur - 1],&req,sizeof(StructRequete), 0) < 0)
-			cout << "Error clavier" << endl;
 		numeroPlaque = (numeroPlaque+1) % 999;
 	} else if(code == 'A') {
 		StructRequete req;
@@ -80,11 +82,13 @@ void Commande(char code, unsigned int valeur)
 		req.voiture.heureArrivee = time(NULL);
 		if(valeur == 1) {
 			req.typeBarriere = AUTRE_BLAISE_PASCAL;
+			if(msgsnd(idBalEntrees[1],&req,sizeof(StructRequete), 0) < 0)
+				cout << "Error clavier" << endl;
 		} else {
 			req.typeBarriere = ENTREE_GASTON_BERGER;
+			if(msgsnd(idBalEntrees[2],&req,sizeof(StructRequete), 0) < 0)
+				cout << "Error clavier" << endl;
 		}
-		if(msgsnd(idBalEntrees[valeur - 1],&req,sizeof(StructRequete), 0) < 0)
-			cout << "Error clavier" << endl;
 		numeroPlaque = (numeroPlaque+1) % 999;
 	} else if(code == 'S') {
 		StructDemandeSortie demande;

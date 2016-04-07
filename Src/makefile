@@ -9,7 +9,7 @@ EDL=g++
 EXECNAME=Parking
 DEBUG=#-DMAP
 CPPFLAGS=-I -g -O2 -Wall -static -std=c++11
-EDLFLAGS=I -g -O2 -Wall -static -std=c++11
+EDLFLAGS=-g -O2 -Wall
 RM=@rm
 ECHO=@echo
 RMFLAGS=-f

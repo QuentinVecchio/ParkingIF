@@ -36,7 +36,7 @@
 
 //////////////////////////////////////////////////////////////////  PUBLIC
 //---------------------------------------------------- Fonctions publiques
-void Entree(int numero, int idBal, int idSemaphoreSynchro, int idSemaphoreNbPlace, int idSemaphoreRequete , int idMPNbPlaces, int idMPRequete);
+void Entree(int numero, int idBal, int idSemaphoreSynchro, int idSemaphoreContenuParking, int idSemaphoreRequete, int idSemaphoreNbPlaces , int idMPContenuParking, int idMPRequete, int idMPNbPlaces);
 // Mode d'emploi :
 //
 // Contrat :

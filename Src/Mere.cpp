@@ -40,11 +40,14 @@ static int BalSortieId;
 
 static int MPRequeteId;
 static int MPContenuParkingId;
+static int MPNbPlaceId;
 static StructParking *MPParking;
 static StructTabRequetes *MPRequetes;
+static unsigned int * MPNbPlace;
 
 static int SemaphoreContenuParkingId;
 static int SemaphoreRequeteId;
+static int SemaphoreNbPlaceId;
 static int SemaphoreSynchroEntreesSortie[3];
 
 //------------------------------------------------------ Fonctions privées
@@ -87,6 +90,7 @@ void Initialisation()
 		for(unsigned int i=0; i < NB_PLACES ; i++)
    	 	{	MPParking->voitures[i] = {0,0,TypeUsager::AUCUN,0};
     	}
+    	shmdt(MPParking);
 	}
 	if((MPRequeteId = shmget(ftok("./Parking",indiceCle++), sizeof(StructTabRequetes),IPC_CREAT | 0660)) < 0)
 	{	cout << "Erreur : Impossible de créer la mémoire partagée requetes" << endl;
@@ -97,8 +101,23 @@ void Initialisation()
    	 	{	MPRequetes->requetes[i].typeBarriere = TypeBarriere::AUCUNE;
    	 		MPRequetes->requetes[i].voiture = {0,0,TypeUsager::AUCUN,0};
     	}
+    	shmdt(MPRequetes);
+	}
+	if((MPNbPlaceId = shmget(ftok("./Parking",indiceCle++), sizeof(unsigned int),IPC_CREAT | 0660)) < 0)
+	{	cout << "Erreur : Impossible de créer la mémoire partagée nb place" << endl;
+	}
+	else
+	{	MPNbPlace = (unsigned int*) shmat(MPNbPlaceId,NULL,0);
+		*MPNbPlace = NB_PLACES;
+    	shmdt(MPNbPlace);
 	}
 	//Création sémaphores
+	if((SemaphoreNbPlaceId = semget(ftok("./Parking",indiceCle++), 1, IPC_CREAT | 0660)) < 0)
+	{	cout << "Erreur : Impossible de créer la sémaphore" << endl;
+	}
+	if(semctl(SemaphoreNbPlaceId, 0, SETVAL, 1) < 0)
+	{	cout << "Erreur : Impossible de créer la sémaphore" << endl;
+	}
 	if((SemaphoreContenuParkingId = semget(ftok("./Parking",indiceCle++), 1, IPC_CREAT | 0660)) < 0)
 	{	cout << "Erreur : Impossible de créer la sémaphore" << endl;
 	}
@@ -118,6 +137,11 @@ void Initialisation()
 		if(semctl(SemaphoreSynchroEntreesSortie[i], 0, SETVAL, 1) < 0)
 		{	cout << "Erreur : Impossible de créer la sémaphore" << endl;
 		}
+		struct sembuf op;
+		op.sem_num = 0;
+		op.sem_op = -1;
+		op.sem_flg = 0;
+		semop(SemaphoreSynchroEntreesSortie[i], &op, 1);
 	}
 	//Création Processus
 	if((pidGestionClavier = fork()) < 0) 
@@ -131,7 +155,7 @@ void Initialisation()
 		{	cout << "Erreur : impossible de faire un fork" << endl;	
 		} 
 		else if (pidSortie == 0)
-		{	Sortie(BalSortieId, SemaphoreSynchroEntreesSortie, SemaphoreContenuParkingId, SemaphoreRequeteId , MPContenuParkingId, MPRequeteId);
+		{	Sortie(BalSortieId, SemaphoreSynchroEntreesSortie, SemaphoreContenuParkingId, SemaphoreRequeteId ,SemaphoreNbPlaceId, MPContenuParkingId, MPRequeteId, MPNbPlaceId);
 		}
 		else {
 			for(unsigned int i=0;i<NB_BARRIERES_ENTREE;i++) 
@@ -139,7 +163,7 @@ void Initialisation()
 				{	cout << "Erreur : impossible de faire un fork " << i << endl;	
 				} 
 				else if (pidEntrees[i] == 0)
-				{	Entree(i, BalEntreeId[i], SemaphoreSynchroEntreesSortie[i], SemaphoreContenuParkingId, SemaphoreRequeteId , MPContenuParkingId, MPRequeteId);
+				{	Entree(i, BalEntreeId[i], SemaphoreSynchroEntreesSortie[i], SemaphoreContenuParkingId, SemaphoreRequeteId, SemaphoreNbPlaceId, MPContenuParkingId, MPRequeteId, MPNbPlaceId);
 				}
 			}
 		}
@@ -173,6 +197,9 @@ void Destruction()
 	if(shmctl(MPContenuParkingId, IPC_RMID, 0)!=0)
 	{	cout << "Erreur : Impossible de détruire la MP ContenuParking" << endl;
 	}
+	if(shmctl(MPNbPlaceId, IPC_RMID, 0)!=0)
+	{	cout << "Erreur : Impossible de détruire la MP nb place" << endl;
+	}
 	//Destruction Bals
 	for(int i=0; i< 3;i++)
 	{	if(msgctl(BalEntreeId[i], IPC_RMID, 0)!=0)
@@ -183,13 +210,16 @@ void Destruction()
 	{	cout << "Erreur : Impossible de détruire la Bal Sortie" << endl;
 	}
 	//Destruction sémaphore
-	if(semctl(SemaphoreContenuParkingId, 0, IPC_RMID, 0) != 0)
+	if(semctl(SemaphoreNbPlaceId, 0, IPC_RMID, 0) != 0)
 	{	cout << "Erreur : Impossible de détruire la sémaphore Compteur place " << endl;
+	}
+	if(semctl(SemaphoreContenuParkingId, 0, IPC_RMID, 0) != 0)
+	{	cout << "Erreur : Impossible de détruire la sémaphore Contenu parking " << endl;
 	}
 	if(semctl(SemaphoreRequeteId, 0, IPC_RMID, 0) != 0)
 	{	cout << "Erreur : Impossible de détruire la sémaphore requete" << endl;
 	}
-	for(int i=0;i<3;i++)
+	for(unsigned int i=0;i<NB_BARRIERES_ENTREE;i++) 
 	{	if(semctl(SemaphoreSynchroEntreesSortie[i], 0, IPC_RMID, 0) != 0)
 		{	cout << "Erreur : Impossible de détruire la sémaphore entree sortie " << i << endl;
 		}
@@ -198,6 +228,6 @@ void Destruction()
 	kill(pidHeure, SIGUSR2);
 	waitpid(pidHeure, NULL, 0);
 	//Destruction de la vue
-	TerminerApplication();
+	TerminerApplication(false);
 } //Fin de Destruction
 

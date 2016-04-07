@@ -22,12 +22,15 @@
 static Voiture pidVoituriers[NB_VOITURIERS];
 static int idMPRequetes;
 static int idMPContenuParking;
+static int idMPNbPlaces;
 static int idBal;
 static int idSemaphoreSynchro[NB_BARRIERES_ENTREE];
 static int idSemaphoreContenuParking;
 static int idSemaphoreRequete;
+static int idSemaphoreNbPlaces;
 static StructTabRequetes *requetes;
 static StructParking *parking;
+static unsigned int *nbPlaces;
 
 //------------------------------------------------------ Fonctions privées
 static int getVoiturier() 
@@ -52,8 +55,29 @@ static void SignalDestruction ( int noSignal )
 			waitpid(pidVoituriers[i].numeroPlace, NULL, 0);
 		}
 	}
+	shmdt(nbPlaces);
+	shmdt(requetes);
+	shmdt(parking);
 	exit(0);
 } //----- fin de SignalDestruction
+
+
+static bool voitureExiste(unsigned int numeroPlace)
+// Algorithme :
+//
+{
+	Voiture v;
+	struct sembuf op;
+	op.sem_num = 0;
+	op.sem_op = -1;
+	op.sem_flg = 0;
+	while(semop(idMPContenuParking,&op,1) == -1 && errno == EINTR);
+	v = parking->voitures[numeroPlace];
+	op.sem_op = 1;
+	semop(idMPContenuParking, &op, 1);
+	return !(v.usager == TypeUsager::AUCUN);
+} //----- fin de restePlace
+
 //////////////////////////////////////////////////////////////////  PUBLIC
 //---------------------------------------------------- Fonctions publiques
 
@@ -74,12 +98,12 @@ void SignalVoitureSortie ( int noSignal )
 			op.sem_num = 0;
 			op.sem_op = -1;
 			op.sem_flg = 0;
-			while(semop(idMPContenuParking,&op,1) == -1 && errno == EINTR);
+			while(semop(idSemaphoreContenuParking,&op,1) == -1 && errno == EINTR);
 			Effacer((TypeZone)numeroPlace);
 			AfficherSortie(parking->voitures[numeroPlace].usager, parking->voitures[numeroPlace].numeroPlaque, parking->voitures[numeroPlace].heureArrivee, time(NULL));
-			parking->voitures[numeroPlace] = {0,0,TypeUsager::AUCUN,0};;
+			parking->voitures[numeroPlace] = {0,0,TypeUsager::AUCUN,0};
 			op.sem_op = 1;
-			semop(idMPContenuParking, &op, 1);
+			semop(idSemaphoreContenuParking, &op, 1);			
 			pidVoituriers[i].numeroPlace = -1;
 			GereRequete();
 		}
@@ -90,10 +114,58 @@ void GereRequete()
 // Algorithme :
 //
 {
-	
+	int bestChoice = -1;
+	struct sembuf op;
+	op.sem_num = 0;
+	op.sem_op = -1;
+	op.sem_flg = 0;
+	while(semop(idSemaphoreRequete,&op,1) == -1 && errno == EINTR);
+	Voiture v1 = requetes->requetes[0].voiture;
+	Voiture v2 = requetes->requetes[1].voiture;
+	Voiture v3 = requetes->requetes[2].voiture;
+	if(v1.usager == PROF)
+	{
+		if(v3.usager == PROF && v3.heureArrivee < v1.heureArrivee)
+		{	bestChoice = 2;
+		}
+		else
+		{	bestChoice = 0;
+		}
+	}
+	else if(v3.usager == PROF)
+	{	bestChoice = 2;
+	}
+	else if(v2.usager == AUTRE)
+	{	if(v3.usager == AUTRE && v3.heureArrivee < v2.heureArrivee)
+		{	bestChoice = 2;
+		}
+		else
+		{	bestChoice = 1;
+		}
+	}
+	else if(v3.usager != AUCUN)
+	{	bestChoice = 2;
+	}
+	if(bestChoice != -1) 
+	{	Effacer((TypeZone)(TypeZone::REQUETE_R1 + bestChoice));
+		struct sembuf op;
+		op.sem_num = 0;
+		op.sem_op = 1;
+		op.sem_flg = 0;
+		requetes->requetes[bestChoice].typeBarriere = TypeBarriere::AUCUNE;
+		requetes->requetes[bestChoice].voiture = {0,0,TypeUsager::AUCUN,0};
+		semop(idSemaphoreSynchro[bestChoice], &op, 1);
+	}
+	op.sem_op = 1;
+	semop(idSemaphoreRequete, &op, 1);
+	op.sem_op = -1;
+	while(semop(idSemaphoreNbPlaces,&op,1) == -1 && errno == EINTR);
+	*nbPlaces = *nbPlaces + 1;
+	op.sem_op = 1;
+	semop(idSemaphoreNbPlaces, &op, 1);
 } //----- fin de GereRequete
 
-void Sortie(int _idBal, int* _idSemaphoreSynchro, int _idSemaphoreContenuParking, int _idSemaphoreRequete , int _idMPContenuParking, int _idMPRequete)
+void Sortie(int _idBal, int* _idSemaphoreSynchro, int _idSemaphoreContenuParking, int _idSemaphoreRequete, int _idSemaphoreNbPlaces , int _idMPContenuParking, int _idMPRequete, int _idMPNbPlaces)
 // Algorithme :
 //
 {
@@ -109,11 +181,13 @@ void Sortie(int _idBal, int* _idSemaphoreSynchro, int _idSemaphoreContenuParking
 	sigaction( SIGCHLD, &actionCHLD, NULL );
  	idMPRequetes = _idMPRequete;
 	idMPContenuParking = _idMPContenuParking;
+	idMPNbPlaces = _idMPNbPlaces;
 	idBal = _idBal;
 	idSemaphoreContenuParking = _idSemaphoreContenuParking;
  	idSemaphoreRequete = _idSemaphoreRequete;
  	parking = (StructParking*) shmat(idMPContenuParking,NULL,0);
     requetes = (StructTabRequetes*) shmat(idMPRequetes,NULL,0);
+    nbPlaces = (unsigned int *) shmat(idMPNbPlaces,NULL,0);
  	for(unsigned int i=0;i<NB_VOITURIERS;i++) {
 		pidVoituriers[i].numeroPlace = -1;
 	}
@@ -129,9 +203,14 @@ void Sortie(int _idBal, int* _idSemaphoreSynchro, int _idSemaphoreContenuParking
 	 		{	cout << "Attention plus de voiturier" << endl;
 	 		}
 	 		else 
-	 		{	if((pidVoituriers[index].numeroPlace = SortirVoiture(demande.place)) >= 0) 
-		 		{		sleep(1);
-		 		}
+	 		{	if(voitureExiste(demande.place)) 
+	 			{	if((pidVoituriers[index].numeroPlace = SortirVoiture(demande.place)) < 0) 
+			 		{	cout << "Erreur : Impossible de sortir une voiture" << endl;
+			 		}
+			 	}
+			 	else
+			 	{	cout << "La voiture n'existe pas" << endl;
+			 	}
 	 		}
  		}
  	}

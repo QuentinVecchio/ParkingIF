@@ -23,12 +23,15 @@ static Voiture pidVoituriers[NB_VOITURIERS];
 static int numero;
 static int idMPRequetes;
 static int idMPContenuParking;
+static int idMPNbPlaces;
 static int idBal;
 static int idSemaphoreSynchro;
 static int idSemaphoreContenuParking;
 static int idSemaphoreRequete;
+static int idSemaphoreNbPlace;
 static StructTabRequetes *requetes;
 static StructParking *parking;
+static unsigned int *nbPlaces;
 //------------------------------------------------------ Fonctions privées
 static int getVoiturier() 
 // Algorithme :
@@ -42,6 +45,22 @@ static int getVoiturier()
 	return -1;
 } //----- fin de getVoiturier
 
+static bool restePlace()
+// Algorithme :
+//
+{
+	int nb = 0;
+	struct sembuf op;
+	op.sem_num = 0;
+	op.sem_op = -1;
+	op.sem_flg = 0;
+	while(semop(idSemaphoreNbPlace,&op,1) == -1 && errno == EINTR);
+	nb = *nbPlaces;
+	op.sem_op = 1;
+	semop(idSemaphoreNbPlace, &op, 1);
+	return (nb > 0);
+} //----- fin de restePlace
+
 static void SignalDestruction ( int noSignal )
 // Algorithme :
 //
@@ -52,6 +71,9 @@ static void SignalDestruction ( int noSignal )
 			waitpid(pidVoituriers[i].numeroPlace, NULL, 0);
 		}
 	}
+	shmdt(nbPlaces);
+	shmdt(requetes);
+	shmdt(parking);
 	exit(0);
 } //----- fin de SignalDestruction
 //////////////////////////////////////////////////////////////////  PUBLIC
@@ -75,12 +97,18 @@ void SignalVoitureGaree ( int noSignal )
 			op.sem_num = 0;
 			op.sem_op = -1;
 			op.sem_flg = 0;
-			while(semop(idMPContenuParking,&op,1) == -1 && errno == EINTR);
+			while(semop(idSemaphoreNbPlace,&op,1) == -1 && errno == EINTR);
+			*nbPlaces = *nbPlaces - 1;
+			op.sem_op = 1;
+			semop(idSemaphoreNbPlace, &op, 1);
+			op.sem_op = -1;
+			while(semop(idSemaphoreContenuParking,&op,1) == -1 && errno == EINTR);
 			parking->voitures[numeroPlace] = pidVoituriers[i];
 			op.sem_op = 1;
-			semop(idMPContenuParking, &op, 1);
+			semop(idSemaphoreContenuParking, &op, 1);
 			AfficherPlace(numeroPlace, pidVoituriers[i].usager, pidVoituriers[i].numeroPlaque,pidVoituriers[i].heureArrivee);
-			pidVoituriers[i].numeroPlace = -1;
+			pidVoituriers[i] = {0,-1,TypeUsager::AUCUN,0};
+
 		}
 	}
 } //----- fin de SignalVoitureGaree
@@ -95,25 +123,25 @@ void LanceRequete(StructRequete req)
 	op.sem_num = 0;
 	op.sem_op = -1;
 	op.sem_flg = 0;
-	semop(idMPRequetes, &op, 1);
-	//Ecriture requete dans la mémoire partagé
+	while(semop(idSemaphoreRequete,&op,1) == -1 && errno == EINTR);
+	requetes->requetes[numero] = req;
 	op.sem_op = 1;
-	semop(idMPRequetes, &op, 1);
+	semop(idSemaphoreRequete, &op, 1);
 	op.sem_op = -1;
 	//Attente pour garer
-	semop(idSemaphoreSynchro, &op, 1);
+	while(semop(idSemaphoreSynchro,&op,1) == -1 && errno == EINTR);
 	int index = getVoiturier();
 	if(index == -1)
 	{	LanceRequete(req);
 	}
 	else 
 	{	//On se sert de numéro place de Voiturier pour stocker temporairement le pid du voiturier
+		pidVoituriers[index] = req.voiture;
 		if((pidVoituriers[index].numeroPlace = GarerVoiture(req.typeBarriere)) < 0) 
 		{	LanceRequete(req);
 		}
 		else 
-		{	
-			sleep(1);
+		{	sleep(2);
 		}
 	}
 	op.sem_op = 1;
@@ -121,7 +149,7 @@ void LanceRequete(StructRequete req)
 	
 } //----- fin de LanceRequete
 
-void Entree ( int _numero, int _idBal, int _idSemaphoreSynchro, int _idSemaphoreContenuParking, int _idSemaphoreRequete , int _idMPContenuParking, int _idMPRequete )
+void Entree ( int _numero, int _idBal, int _idSemaphoreSynchro, int _idSemaphoreContenuParking, int _idSemaphoreRequete, int _idSemaphoreNbPlaces , int _idMPContenuParking, int _idMPRequete, int _idMPNbPlaces )
 // Algorithme :
 //
 {
@@ -138,34 +166,37 @@ void Entree ( int _numero, int _idBal, int _idSemaphoreSynchro, int _idSemaphore
 	numero = _numero;
  	idMPRequetes = _idMPRequete;
 	idMPContenuParking = _idMPContenuParking;
+	idMPNbPlaces = _idMPNbPlaces;
 	idBal = _idBal;
 	idSemaphoreSynchro = _idSemaphoreSynchro;
 	idSemaphoreContenuParking = _idSemaphoreContenuParking;
  	idSemaphoreRequete = _idSemaphoreRequete;
   	parking = (StructParking*) shmat(idMPContenuParking,NULL,0);
     requetes = (StructTabRequetes*) shmat(idMPRequetes,NULL,0);
-
+    nbPlaces = (unsigned int *) shmat(idMPNbPlaces,NULL,0);
  	for(int i=0;i<NB_VOITURIERS;i++) {
-		pidVoituriers[i].numeroPlace = -1;
+		pidVoituriers[i] = {0,-1,TypeUsager::AUCUN,0};
 	}
  	int index = 0;
  	for(;;)
  	{	StructRequete req;
- 		if(msgrcv(idBal, &req, sizeof(StructRequete), 1, MSG_NOERROR) > 0)
- 		{	index = getVoiturier();
- 			if(index == -1)
-	 		{	cout << "Erreur, aucun voiturier" << endl;
-	 		}
-	 		else 
+ 		while(msgrcv(idBal,&req,sizeof(StructRequete),0,0) == -1 && errno == EINTR);
+ 		index = getVoiturier();
+ 		if(index == -1)
+	 	{	cout << "Erreur, aucun voiturier" << endl;
+	 	}
+	 	else 
+	 	{	//On se sert de numéro place de Voiturier pour stocker temporairement le pid du voiturier
+	 		if(restePlace()) 
 	 		{	pidVoituriers[index] = req.voiture;
 	 			if((pidVoituriers[index].numeroPlace = GarerVoiture(req.typeBarriere)) < 0) 
-		 		{	cout << "Erreur, aucun voiturier !!!!!!!!!!!!!!!!!" << endl;
-		 			LanceRequete(req);
-		 		}
-		 		else 
-		 		{	sleep(1);
-		 		}
+	 			{	LanceRequete(req);
+	 			}
+	 		}
+	 		else
+	 		{	LanceRequete(req);
 	 		}
  		}
+ 		sleep(2);
  	}
 } //----- fin de Entree
