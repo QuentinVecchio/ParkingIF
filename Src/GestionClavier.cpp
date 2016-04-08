@@ -24,11 +24,6 @@ static int idBalEntrees[3];
 static int idBalSortie;
 static unsigned int numeroPlaque;
 //------------------------------------------------------ Fonctions privées
-static void SignalDestruction ( int noSignal )
-// Algorithme :
-{
-	exit(0);
-} //----- fin de SignalDestruction
 
 //////////////////////////////////////////////////////////////////  PUBLIC
 //---------------------------------------------------- Fonctions publiques
@@ -38,13 +33,7 @@ static void SignalDestruction ( int noSignal )
 void GestionClavier(int *_idBalEntrees, int _idBalSortie)
 // Algorithme :
 {
-	//Création du handler et assignation
-	struct sigaction action;
-	action.sa_handler = SignalDestruction;
-	sigemptyset ( &action.sa_mask );
-	action.sa_flags = 0;
-	sigaction( SIGUSR2, &action, NULL );
-	for(int i=0;i<3;i++) 
+	for(unsigned int i=0;i<NB_PLACES;i++) 
 	{	idBalEntrees[i] = _idBalEntrees[i];
 	}
 	numeroPlaque = 0;
@@ -68,11 +57,11 @@ void Commande(char code, unsigned int valeur)
 		if(valeur == 1) {
 			req.typeBarriere = PROF_BLAISE_PASCAL;
 			if(msgsnd(idBalEntrees[0],&req,sizeof(StructRequete), 0) < 0)
-				cout << "Error clavier" << endl;		
+				Afficher(TypeZone::MESSAGE, "Erreur commande");		
 		} else {
 			req.typeBarriere = ENTREE_GASTON_BERGER;
 			if(msgsnd(idBalEntrees[2],&req,sizeof(StructRequete), 0) < 0)
-				cout << "Error clavier" << endl;
+				Afficher(TypeZone::MESSAGE, "Erreur commande");		
 		}
 		numeroPlaque = (numeroPlaque+1) % 999;
 	} else if(code == 'A') {
@@ -83,17 +72,17 @@ void Commande(char code, unsigned int valeur)
 		if(valeur == 1) {
 			req.typeBarriere = AUTRE_BLAISE_PASCAL;
 			if(msgsnd(idBalEntrees[1],&req,sizeof(StructRequete), 0) < 0)
-				cout << "Error clavier" << endl;
+				Afficher(TypeZone::MESSAGE, "Erreur commande");		
 		} else {
 			req.typeBarriere = ENTREE_GASTON_BERGER;
 			if(msgsnd(idBalEntrees[2],&req,sizeof(StructRequete), 0) < 0)
-				cout << "Error clavier" << endl;
+				Afficher(TypeZone::MESSAGE, "Erreur commande");		
 		}
 		numeroPlaque = (numeroPlaque+1) % 999;
 	} else if(code == 'S') {
 		StructDemandeSortie demande;
 		demande.place = valeur;
 		if(msgsnd(idBalSortie,&demande,sizeof(StructDemandeSortie), 0) < 0)
-			cout << "Error clavier" << endl;
+			Afficher(TypeZone::MESSAGE, "Erreur commande");		
 	}
 } //----- fin de Commande

@@ -36,15 +36,20 @@ using namespace std;
 //---------------------------------------------------- Fonctions publiques
 
 void GestionClavier(int * BalEntreesId, int BalSortieId);
+//	Paramètres : 
+//		BalEntreesId : tableau de taille NB_BARRIERES_ENTREE contenant les id des BàL d'entrée
+//		BalSortieId : contient l'id de la BàL de sortie
 // Mode d'emploi :
-//
+//	Permet de lancer la tâche GestionClavier
 // Contrat :
 //
 
 void Commande(char code, unsigned int valeur);
+//	Paramètres : 
+//		code : type de la requete
+//		valeur : Numéro de la porte
 // Mode d'emploi :
-//	Code : P(rof), A(utre) ou S(ortie)
-//	Valeur : 1, 2, 3 (Porte , Porte et Portie de sortie)
+//	Fonction qui permet de mettre dans la bonne Bal la requete, ou permet de lancer la fin de l'application
 // Contrat :
 //
 

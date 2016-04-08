@@ -8,7 +8,17 @@
 
 //---------- Interface de la tâche <Mere> (fichier Mere.h) ---------
 #if ! defined ( MERE_H )
-#define MERE_H
+#define MERE_H    
+
+using namespace std;
+//------------------------------------------------------------------------
+// Rôle de la tâche <Mere>
+//	La tâche mère a pour rôle d'initialiser et créer toutes les mémoires partagées,	
+//	Bàl et sémaphore, et également de lancer les autres tâches
+//------------------------------------------------------------------------
+
+/////////////////////////////////////////////////////////////////  INCLUDE
+//--------------------------------------------------- Interfaces utilisées
 #include <iostream>
 #include <unistd.h>
 #include <sys/types.h>
@@ -24,17 +34,7 @@
 #include "Outils.h"
 #include "Donnees.h"
 #include "Entree.h"
-#include "Sortie.h"    
-
-using namespace std;
-//------------------------------------------------------------------------
-// Rôle de la tâche <Mere>
-//	
-//
-//------------------------------------------------------------------------
-
-/////////////////////////////////////////////////////////////////  INCLUDE
-//--------------------------------------------------- Interfaces utilisées
+#include "Sortie.h"
 
 //------------------------------------------------------------- Constantes
 
@@ -44,25 +44,8 @@ using namespace std;
 //---------------------------------------------------- Fonctions publiques
 int main();
 // Mode d'emploi :
-//
-// Contrat :
-//
-
-void Initialisation();
-// Mode d'emploi :
-//
-// Contrat :
-//
-
-void Moteur();
-// Mode d'emploi :
-//
-// Contrat :
-//
-
-void Destruction();
-// Mode d'emploi :
-//
+//	Méthode main de l'application
+//	Lance la tâche mère
 // Contrat :
 //
 
